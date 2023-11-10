@@ -1,21 +1,25 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Box, Button, FormControl, InputLabel, MenuItem, Select, TextField, Typography } from "@mui/material";
 import http from "../../../http";
 import ITag from "../../../interfaces/ITag";
 import IRestaurante from "../../../interfaces/IRestaurante";
-
+import IPrato from "../../../interfaces/IPrato";
 
 export default function FormularioPrato() {
   const [nomePrato, setNomePrato] = useState('')
   const [descricao, setDescricao] = useState('')
+
   const [tags, setTags] = useState<ITag[]>([])
   const [tag, setTag] = useState('')
+
   const [restaurantes, setRestaurantes] = useState<IRestaurante[]>([])
   const [restaurante, setRestaurante] = useState('')
+
   const [imagem, setImagem] = useState<File | null>(null)
 
-  const parametros = useParams()
+  const params = useParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     http.get<{ tags: ITag[] }>('tags/')
@@ -23,6 +27,18 @@ export default function FormularioPrato() {
     http.get<IRestaurante[]>('restaurantes/')
       .then(res => setRestaurantes(res.data))
   }, [])
+
+  useEffect(() => {
+    if (params.id) {
+      http.get<IPrato>(`pratos/${params.id}/`)
+        .then(res => {
+          setNomePrato(res.data.nome)
+          setDescricao(res.data.descricao)
+          setTag(res.data.tag)
+          setRestaurante(res.data.restaurante.toString())
+        })
+    }
+  }, [params])
 
   const selecionarArquivo = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.length) {
@@ -46,23 +62,39 @@ export default function FormularioPrato() {
       formData.append('imagem', imagem)
     }
 
-    http.request({
-      url: 'pratos/',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      data: formData
-    })
-      .then(() => {
-        setNomePrato('')
-        setDescricao('')
-        setTag('')
-        setRestaurante('')
-        alert('Prato cadastrado com Sucesso!')
+    if (params.id) {
+      http.request({
+        method: 'PUT',
+        url: `pratos/${params.id}/`,
+        data: formData
       })
-      .catch(err => console.log(err))
+        .then(() => {
+          alert("Pratinho editado com sucesso!")
+          navigate('/admin/pratos');
+        })
+
+    } else {
+      http.request({
+        url: 'pratos/',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        data: formData
+
+      })
+        .then(() => {
+          setNomePrato('')
+          setDescricao('')
+          setTag('')
+          setRestaurante('')
+          alert('Prato cadastrado com Sucesso!')
+        })
+        .catch(err => console.log(err))
+    }
+
   }
+
 
   return (
 
